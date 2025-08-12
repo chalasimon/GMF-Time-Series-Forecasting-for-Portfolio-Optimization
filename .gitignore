@@ -1,0 +1,10 @@
+#data
+/data
+# vs config
+.vscode
+# environment variables
+.env
+# .venv
+.venv
+# setup directory
+setup.py
