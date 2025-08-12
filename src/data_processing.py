@@ -30,3 +30,12 @@ def clean_data(dfs):
         df.fillna(method='ffill', inplace=True)
         df.fillna(method='bfill', inplace=True)
     return dfs
+def calculate_returns(dfs):
+    """
+    Calculate daily percentage returns (simple returns) for each asset.
+    Returns a DataFrame with columns = tickers.
+    """
+    returns = pd.DataFrame()
+    for ticker, df in dfs.items():
+        returns[ticker] = df['Close'].pct_change()
+    return returns.dropna()
