@@ -39,3 +39,11 @@ def calculate_returns(dfs):
     for ticker, df in dfs.items():
         returns[ticker] = df['Close'].pct_change()
     return returns.dropna()
+def rolling_volatility(returns, window=21):
+    """
+    Calculate rolling annualized volatility (std dev) of returns.
+    window = number of trading days (default 21 = ~1 month).
+    Annualized by sqrt(252).
+    """
+    vol = returns.rolling(window=window).std() * np.sqrt(252)
+    return vol
