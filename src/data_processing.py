@@ -71,3 +71,15 @@ def get_extreme_return_days(returns, top_n=5):
     top_neg = returns_long.nsmallest(top_n, 'Return')
 
     return top_pos, top_neg
+def adf_test(series, signif=0.05):
+    """
+    Perform Augmented Dickey-Fuller test for stationarity.
+    Returns dictionary with ADF statistic, p-value, and stationarity bool.
+    """
+    result = adfuller(series.dropna(), autolag='AIC')
+    adf_stat, p_value = result[0], result[1]
+    return {
+        'adf_statistic': adf_stat,
+        'p_value': p_value,
+        'stationary': p_value < signif
+    }
