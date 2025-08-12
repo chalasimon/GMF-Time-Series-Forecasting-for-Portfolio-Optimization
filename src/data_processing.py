@@ -83,3 +83,16 @@ def adf_test(series, signif=0.05):
         'p_value': p_value,
         'stationary': p_value < signif
     }
+def sharpe_ratio(returns, risk_free_rate=0.0):
+    """
+    Calculate annualized Sharpe Ratio given daily returns.
+    Assumes 252 trading days per year.
+    """
+    excess_returns = returns - risk_free_rate / 252
+    return (excess_returns.mean() / excess_returns.std()) * np.sqrt(252)
+
+def value_at_risk(returns, confidence_level=0.05):
+    """
+    Calculate historical Value at Risk (VaR) at given confidence level.
+    """
+    return returns.quantile(confidence_level)
