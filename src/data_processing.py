@@ -47,3 +47,27 @@ def rolling_volatility(returns, window=21):
     """
     vol = returns.rolling(window=window).std() * np.sqrt(252)
     return vol
+
+def detect_outliers(returns, z_thresh=3):
+    """
+    Detect outliers based on Z-score of returns.
+    Returns DataFrame of booleans where True indicates outlier days.
+    """
+    z_scores = (returns - returns.mean()) / returns.std()
+    return (np.abs(z_scores) > z_thresh)
+def get_extreme_return_days(returns, top_n=5):
+    """
+    Find top_n days with highest positive and negative returns.
+    Returns two DataFrames: top positive and top negative return days.
+    """
+    # Flatten to long format: date, asset, return
+    returns_long = returns.stack().reset_index()
+    returns_long.columns = ['Date', 'Asset', 'Return']
+
+    # Top positive returns
+    top_pos = returns_long.nlargest(top_n, 'Return')
+
+    # Top negative returns
+    top_neg = returns_long.nsmallest(top_n, 'Return')
+
+    return top_pos, top_neg
