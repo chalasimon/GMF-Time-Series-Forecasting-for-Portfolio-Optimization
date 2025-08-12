@@ -15,3 +15,18 @@ def load_asset_data(tickers):
         df = pd.read_csv(file_path, parse_dates=['Date'], index_col='Date')
         dfs[ticker] = df
     return dfs
+def clean_data(dfs):
+    """
+    For each asset DataFrame:
+    - check datatypes
+    - fill missing values with forward fill then backward fill
+    """
+    for ticker, df in dfs.items():
+        # Ensure numeric types
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        # Fill missing values
+        df.fillna(method='ffill', inplace=True)
+        df.fillna(method='bfill', inplace=True)
+    return dfs
