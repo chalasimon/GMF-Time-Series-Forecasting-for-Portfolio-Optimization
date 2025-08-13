@@ -30,8 +30,11 @@ def clean_data(dfs):
         df.fillna(method='ffill', inplace=True)
         df.fillna(method='bfill', inplace=True)
     return dfs
-def normalize(df):
+def clean_and_normalize(df):
     for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+        df[col].fillna(method='ffill', inplace=True)
+        df[col].fillna(method='bfill', inplace=True)
         if np.issubdtype(df[col].dtype, np.number):
             df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
     
