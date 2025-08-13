@@ -30,6 +30,12 @@ def clean_data(dfs):
         df.fillna(method='ffill', inplace=True)
         df.fillna(method='bfill', inplace=True)
     return dfs
+def normalize(df):
+    for col in df.columns:
+        if np.issubdtype(df[col].dtype, np.number):
+            df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+    
+    return df
 def calculate_returns(dfs):
     """
     Calculate daily percentage returns (simple returns) for each asset.
