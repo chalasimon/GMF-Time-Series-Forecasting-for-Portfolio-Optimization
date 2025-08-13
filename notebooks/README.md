@@ -9,6 +9,7 @@ It aims to preprocess and explore financial data, focusing on seasonality, trend
 notebooks
 ├── 01_data_data.ipynb
 ├── 02_preprocess_explore.ipynb
+├── 03_tsla_forecasting.ipynb
 ```
 ## 📥 Getting Started
 
