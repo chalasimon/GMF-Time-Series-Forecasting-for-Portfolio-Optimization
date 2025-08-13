@@ -74,8 +74,6 @@ six==1.17.0
 soupsieve==2.7
 stack-data==0.6.3
 statsmodels==0.14.5
-tensorboard==2.19.0
-tensorboard-data-server==0.7.2
 tensorflow
 termcolor==3.1.0
 threadpoolctl==3.6.0
