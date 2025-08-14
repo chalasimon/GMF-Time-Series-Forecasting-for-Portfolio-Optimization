@@ -38,11 +38,8 @@ def annualize_covariance(daily_returns: pd.DataFrame) -> pd.DataFrame:
 def expected_return_from_tsla_forecast(tsla_forecast: pd.DataFrame) -> float:
     """
     Turn a TSLA future price forecast into an expected annual return.
-    Expects a DataFrame with a 'mean' column over future dates.
-    Strategy:
-      1) Convert future prices to daily pct_change returns
-      2) Take the average daily return
-      3) Annualize (×252)
+    Uses start-to-end price growth over the forecast period.
+    Expects a DataFrame with a 'mean' column (or first column as fallback).
     """
     # Accept flexible column names
     if "mean" in tsla_forecast.columns:
@@ -52,16 +49,20 @@ def expected_return_from_tsla_forecast(tsla_forecast: pd.DataFrame) -> float:
     elif "LSTM_Forecast" in tsla_forecast.columns:
         price = tsla_forecast["LSTM_Forecast"].copy()
     else:
-        # If a Series is passed or a DF without those names, try first column
-        if isinstance(tsla_forecast, pd.Series):
-            price = tsla_forecast.copy()
-        else:
-            price = tsla_forecast.iloc[:, 0].copy()
+        # fallback to first column
+        price = tsla_forecast.iloc[:, 0].copy()
 
-    future_rets = price.pct_change().dropna()
-    if future_rets.empty:
-        raise ValueError("TSLA forecast did not produce non-empty returns. Check inputs.")
-    return annualize_mean_return(future_rets)
+    # Compute daily return based on start-to-end growth
+    n_days = len(price)
+    if n_days < 2:
+        raise ValueError("Forecast too short to compute returns")
+    start_price = price.iloc[0]
+    end_price = price.iloc[-1]
+    daily_ret = (end_price / start_price) ** (1 / n_days) - 1
+
+    # Annualize
+    return daily_ret * 252
+
 
 # ------------------------------
 # Optimization Outputs
