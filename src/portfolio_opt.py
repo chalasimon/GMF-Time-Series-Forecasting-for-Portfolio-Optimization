@@ -172,6 +172,70 @@ def _opt_with_numpy(mu: pd.Series, cov: pd.DataFrame, rf: float = 0.0) -> Fronti
 
     return FrontierResults(points=pts, max_sharpe=max_sharpe_pt, min_vol=min_vol_pt)
 
+
+def optimize_portfolio(
+    daily_returns: pd.DataFrame,
+    tsla_expected_return_annual: float,
+    rf: float = 0.0,
+    use_pypfopt: bool = True
+) -> FrontierResults:
+    """
+    Build expected returns vector & covariance, then compute:
+      - Efficient frontier curve
+      - Max Sharpe portfolio
+      - Min Vol portfolio
+
+    Parameters
+    ----------
+    daily_returns : DataFrame with columns ['TSLA','BND','SPY'] daily % returns
+    tsla_expected_return_annual : float from your forecast (annualized)
+    rf : risk-free rate (annualized), default 0.0
+    use_pypfopt : prefer PyPortfolioOpt solver when available
+    """
+    cols = ["TSLA", "BND", "SPY"]
+    dr = daily_returns[cols].dropna(how="any").copy()
+
+    # Historical annualized mean for BND & SPY, model view for TSLA
+    bnd_ann = annualize_mean_return(dr["BND"])
+    spy_ann = annualize_mean_return(dr["SPY"])
+    mu = pd.Series({"TSLA": tsla_expected_return_annual, "BND": bnd_ann, "SPY": spy_ann})
+    cov = annualize_covariance(dr)
+
+    if use_pypfopt and HAS_PFOPT:
+        return _opt_with_pypfopt(mu, cov, rf=rf)
+    else:
+        return _opt_with_numpy(mu, cov, rf=rf)
+
+
+# ------------------------------
+# Plotting
+# ------------------------------
+
+def plot_efficient_frontier(frontier: FrontierResults, title="Efficient Frontier"):
+    plt.figure(figsize=(9, 6))
+    # Frontier cloud/curve
+    if frontier.points:
+        xs = [p.risk for p in frontier.points]
+        ys = [p.ret for p in frontier.points]
+        plt.scatter(xs, ys, s=20, alpha=0.6, label="Efficient frontier")
+
+    # Max Sharpe
+    ms = frontier.max_sharpe
+    plt.scatter([ms.risk], [ms.ret], s=120, marker="*", label=f"Max Sharpe (SR={ms.sharpe:.2f})")
+
+    # Min Vol
+    mv = frontier.min_vol
+    plt.scatter([mv.risk], [mv.ret], s=120, marker="D", label="Min Volatility")
+
+    plt.xlabel("Annualized Volatility")
+    plt.ylabel("Annualized Return")
+    plt.title(title)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def format_weights(weights: dict, precision=4) -> dict:
     """Nicely round small numbers; keep only non-trivial weights."""
     clean = {k: round(float(v), precision) for k, v in weights.items() if abs(v) > 1e-4}
     # ensure they sum ~1 after rounding
