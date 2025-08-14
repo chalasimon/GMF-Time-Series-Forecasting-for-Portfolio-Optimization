@@ -27,6 +27,9 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
+import pickle
+from joblib import dump, load
+
 
 def chronological_split(series: pd.Series, split_date: str):
     """Split a price series into train/test by date string 'YYYY-MM-DD'."""
@@ -56,10 +59,17 @@ class ArimaResult:
     metrics: dict
 
 
-def fit_arima(y_train: pd.Series, order=(1,1,1)):
+def fit_arima(y_train: pd.Series, order=(1,1,1),save_model=True, model_path="../model/arima_model.pkl"):
     """Fit ARIMA model using given order (p,d,q)."""
     model = ARIMA(y_train, order=order)
     model_fit = model.fit()
+
+    if save_model:
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        with open(model_path, "wb") as f:
+            pickle.dump(model_fit, f)
+        print(f"ARIMA model saved to {model_path}")
+    
     return model_fit
 
 
@@ -130,6 +140,8 @@ class LstmResult:
     preds: pd.Series
     metrics: dict
     history: dict
+    model_path: str = None
+    scaler_path: str = None
 
 
 def train_predict_lstm(
@@ -143,6 +155,9 @@ def train_predict_lstm(
     lr: float = 1e-3,
     val_split: float = 0.1,
     seed: int = 42,
+    save_model=True,
+    model_path="../model/lstm_tsla.h5",
+    scaler_path="../model/lstm_scaler.save"
 ) -> LstmResult:
     tf.keras.utils.set_random_seed(seed)
 
@@ -188,7 +203,17 @@ def train_predict_lstm(
     preds_series = pd.Series(y_pred, index=test_dates, name="LSTM_Forecast")
 
     metrics = evaluate_forecast(y_test, y_pred)
-    return LstmResult(preds=preds_series, metrics=metrics, history=history.history)
+    # Save model and scaler
+    if save_model:
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        model.save(model_path)
+        dump(scaler, scaler_path)
+        print(f"LSTM model saved to {model_path}")
+        print(f"LSTM scaler saved to {scaler_path}")
+    
+    return LstmResult(preds=preds_series, metrics=metrics, history=history.history,
+                      model_path=model_path if save_model else None,
+                      scaler_path=scaler_path if save_model else None)
 
 
 def plot_lstm(y_train, y_test, lstm_res: LstmResult, title="TSLA LSTM Forecast"):
