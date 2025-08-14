@@ -22,6 +22,10 @@ from statsmodels.tsa.arima.model import ARIMAResults
 # LSTM
 from tensorflow.keras.models import load_model
 from joblib import load as joblib_load
+from tensorflow.keras.models import load_model
+from tensorflow.keras.losses import MeanSquaredError
+from tensorflow.keras.metrics import MeanSquaredError as MSE
+import joblib
 
 
 # -------------------------------
@@ -30,13 +34,8 @@ from joblib import load as joblib_load
 
 def _future_bdays(last_date: pd.Timestamp, steps: int) -> pd.DatetimeIndex:
     """Generate a business-day date index starting from the next business day."""
-    start = pd.tseries.offsets.BusinessDay().apply(last_date)
+    start = last_date + pd.tseries.offsets.BusinessDay()
     return pd.bdate_range(start=start, periods=steps)
-
-
-# -------------------------------
-# ARIMA – Load & Forecast
-# -------------------------------
 
 def load_arima(model_path: str):
     """Load a pickled statsmodels ARIMAResults."""
@@ -98,12 +97,11 @@ def plot_future_forecast_arima(
 # LSTM – Load & Forecast
 # -------------------------------
 
-def load_lstm_and_scaler(model_path: str, scaler_path: str):
-    """Load Keras model and corresponding MinMaxScaler (joblib)."""
-    model = load_model(model_path)
-    scaler = joblib_load(scaler_path)
-    return model, scaler
 
+def load_lstm_and_scaler(model_path, scaler_path):
+    model = load_model(model_path, compile=False)  # 🚀 No need for metrics/loss deserialization
+    scaler = joblib.load(scaler_path)
+    return model, scaler
 
 def _recursive_lstm_point_forecast(
     last_values: np.ndarray,  # shape (T, 1) raw prices (not scaled)
