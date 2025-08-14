@@ -125,3 +125,57 @@ def _opt_with_pypfopt(mu: pd.Series, cov: pd.DataFrame, rf: float = 0.0) -> Fron
 
     return FrontierResults(points=points, max_sharpe=max_sharpe_pt, min_vol=min_vol_pt)
 
+
+def _opt_with_numpy(mu: pd.Series, cov: pd.DataFrame, rf: float = 0.0) -> FrontierResults:
+    """
+    Lightweight fallback if PyPortfolioOpt is not installed.
+    Uses a coarse random search + normalization to approximate frontier.
+    """
+    rng = np.random.default_rng(42)
+    assets = list(mu.index)
+    n = len(assets)
+
+    n_samples = 10000
+    weights = rng.random((n_samples, n))
+    weights = weights / weights.sum(axis=1, keepdims=True)
+
+    rets = weights @ mu.values
+    risks = np.sqrt(np.einsum("bi,ij,bj->b", weights, cov.values, weights))
+    sharpes = (rets - rf) / np.where(risks == 0, np.nan, risks)
+
+    # Build coarse "frontier": take the top portfolios by return buckets
+    df = pd.DataFrame({
+        "ret": rets, "risk": risks, "sharpe": sharpes
+    })
+    df["idx"] = np.arange(n_samples)
+
+    # Choose ~60 frontier points by quantiles of return
+    qs = np.linspace(df["ret"].min(), df["ret"].max(), 60)
+    pts = []
+    for q in qs:
+        sub = df.iloc[(df["ret"] - q).abs().argsort()[:30]]  # nearest 30
+        best = sub.sort_values("risk").iloc[:1]
+        for _, row in best.iterrows():
+            i = int(row["idx"])
+            w = {assets[k]: weights[i, k] for k in range(n)}
+            pts.append(PortfolioPoint(risk=row["risk"], ret=row["ret"], sharpe=row["sharpe"], weights=w))
+
+    # Max Sharpe
+    i_ms = np.nanargmax(sharpes)
+    w_ms = {assets[k]: weights[i_ms, k] for k in range(n)}
+    max_sharpe_pt = PortfolioPoint(risk=risks[i_ms], ret=rets[i_ms], sharpe=sharpes[i_ms], weights=w_ms)
+
+    # Min Vol
+    i_mv = np.nanargmin(risks)
+    w_mv = {assets[k]: weights[i_mv, k] for k in range(n)}
+    min_vol_pt = PortfolioPoint(risk=risks[i_mv], ret=rets[i_mv], sharpe=sharpes[i_mv], weights=w_mv)
+
+    return FrontierResults(points=pts, max_sharpe=max_sharpe_pt, min_vol=min_vol_pt)
+
+    """Nicely round small numbers; keep only non-trivial weights."""
+    clean = {k: round(float(v), precision) for k, v in weights.items() if abs(v) > 1e-4}
+    # ensure they sum ~1 after rounding
+    s = sum(clean.values())
+    if 0.98 <= s <= 1.02:
+        return clean
+    return weights
